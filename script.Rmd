@@ -13,10 +13,17 @@ library(dplyr)
 library(reshape2)
 library(graphics)
 
-# wczytuję dane z pliku, zapisuję je do data frame
-resultsOriginal <- read.csv(file = 'results.csv')
-results <- resultsOriginal
+# wczytuję dane o respondentach z pliku
+respondents <- read.csv(file = 'respondents.csv')
+respondents <- respondents[c("RID", "q20", "q21", "q24", "q15", "q14", "q16", "q17")]
+
+# wyfiltrowuję respondentów którzy odpowiedzieli na wszystkie pytania o sobie
+respondents <- filter(respondents, !is.na(q20) & !is.na(q21) & !is.na(q24) & !is.na(q15) &  !is.na(q14) & !is.na(q16) & !is.na(q17) & q20 != 6)
+
+# wczytuję dane o wynikach eksperymentu z pliku, zapisuję je do data frame
+results <- read.csv(file = 'results.csv')
 freq <- as.data.frame(table(results$RID))
+freq <- filter(freq, Var1 %in% respondents$RID)
 freq <- filter(freq, Freq==32)
 results <- filter(results, RID %in% freq$Var1)
 best <- apply(results,1, function(x) x[6 + x[5]])
@@ -27,12 +34,15 @@ r <- data.frame(num=1:16, result = best_freq$Freq - worst_freq$Freq)
 results$pref1 <- best
 results$pref4 <- worst
 
-# dzielę wszystkie wyniki na respondentów 
-results <- split(results, results$RID)
-best_tables <- as.data.frame(sapply(results, function(x) table(factor(x$pref1, 1:16))))
-worst_tables <- as.data.frame(sapply(results, function(x) table(factor(x$pref4, 1:16))))
+# wyfiltrowuję tylko tych respondentów którzy odpowiedzieli na wszystkie pytania eksperymentalne
+respondents <- filter(respondents, RID %in% freq$Var1)
 
-#tworzę dla każdego respondenta wektor różnic
+# dzielę wszystkie wyniki na respondentów 
+results_personal <- split(results, results$RID)
+best_tables <- as.data.frame(sapply(results_personal, function(x) table(factor(x$pref1, 1:16))))
+worst_tables <- as.data.frame(sapply(results_personal, function(x) table(factor(x$pref4, 1:16))))
+
+# tworzę dla każdego respondenta wektor różnic
 personal_scores <- best_tables - worst_tables
 
 # obliczam dystansy (w normie euklidesowej) między wektorami różnic poszczególnych respondentów
@@ -43,8 +53,18 @@ distances_frame <- melt(as.matrix(distances), varnames = c("person1", "person2")
 # wykonuję algorytm klastrowania Warda, dzielę na 5 grup i zapisuję grupy
 fit <- hclust(distances, method="ward.D")
 plot(fit)
-rect.hclust(fit, k=2, border="red")
+rect.hclust(fit, k=5, border="red")
 groups <- cutree(fit, k=5)
+
+# dzielę respondentów według grup
+respondents["group"] <- groups
+tapply(respondents$q20, respondents$group, mean)
+respondents_groups <- split(respondents, respondents$group)
+plot(respondents_groups$`1`$q20)
+plot(respondents_groups$`2`$q20)
+plot(respondents_groups$`3`$q20)
+plot(respondents_groups$`4`$q20)
+plot(respondents_groups$`5`$q20)
 
 ```
 
