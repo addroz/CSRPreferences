@@ -8,6 +8,12 @@ This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute
 Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
 
 ```{r}
+library(stats)
+library(dplyr)
+library(reshape2)
+library(graphics)
+
+# wczytuję dane z pliku, zapisuję je do data frame
 resultsOriginal <- read.csv(file = 'results.csv')
 results <- resultsOriginal
 freq <- as.data.frame(table(results$RID))
@@ -18,6 +24,28 @@ worst <- apply(results,1, function(x) x[6 + x[6]])
 best_freq <- as.data.frame(table(best))
 worst_freq <- as.data.frame(table(worst))
 r <- data.frame(num=1:16, result = best_freq$Freq - worst_freq$Freq)
+results$pref1 <- best
+results$pref4 <- worst
+
+# dzielę wszystkie wyniki na respondentów 
+results <- split(results, results$RID)
+best_tables <- as.data.frame(sapply(results, function(x) table(factor(x$pref1, 1:16))))
+worst_tables <- as.data.frame(sapply(results, function(x) table(factor(x$pref4, 1:16))))
+
+#tworzę dla każdego respondenta wektor różnic
+personal_scores <- best_tables - worst_tables
+
+# obliczam dystansy (w normie euklidesowej) między wektorami różnic poszczególnych respondentów
+distances <- dist(t(as.matrix(personal_scores)))
+distances_mtrx <- as.matrix(distances) 
+distances_frame <- melt(as.matrix(distances), varnames = c("person1", "person2"))
+
+# wykonuję algorytm klastrowania Warda, dzielę na 5 grup i zapisuję grupy
+fit <- hclust(distances, method="ward.D")
+plot(fit)
+rect.hclust(fit, k=2, border="red")
+groups <- cutree(fit, k=5)
+
 ```
 
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
