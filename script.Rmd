@@ -12,13 +12,22 @@ library(stats)
 library(dplyr)
 library(reshape2)
 library(graphics)
+library(ape)
+library(ggplot2)
+
+getMeanPreferences <- function(x) {
+  c(mean(x$`1`), mean(x$`2`), mean(x$`3`), mean(x$`4`), mean(x$`5`),
+    mean(x$`6`), mean(x$`7`), mean(x$`8`), mean(x$`9`), mean(x$`10`),
+    mean(x$`11`), mean(x$`12`), mean(x$`13`), mean(x$`14`), mean(x$`15`),
+    mean(x$`16`))
+}
 
 # wczytuję dane o respondentach z pliku
 respondents <- read.csv(file = 'respondents.csv')
 respondents <- respondents[c("RID", "q20", "q21", "q24", "q15", "q14", "q16", "q17")]
 
 # wyfiltrowuję respondentów którzy odpowiedzieli na wszystkie pytania o sobie
-respondents <- filter(respondents, !is.na(q20) & !is.na(q21) & !is.na(q24) & !is.na(q15) &  !is.na(q14) & !is.na(q16) & !is.na(q17) & q20 != 6)
+respondents <- filter(respondents, !is.na(q20) & !is.na(q21) & !is.na(q24) & !is.na(q15) &  !is.na(q14) & !is.na(q16) & !is.na(q17) & q15 != 10)
 
 # wczytuję dane o wynikach eksperymentu z pliku, zapisuję je do data frame
 results <- read.csv(file = 'results.csv')
@@ -37,6 +46,49 @@ results$pref4 <- worst
 # wyfiltrowuję tylko tych respondentów którzy odpowiedzieli na wszystkie pytania eksperymentalne
 respondents <- filter(respondents, RID %in% freq$Var1)
 
+# przygotowuję wykresy z info o respondentach
+data <- as.data.frame(table(respondents$q20))
+data$Var1 <- as.numeric(as.character(data$Var1))
+data$Labels <- c("Skrajnie lewicowe", "Umiarkowanie lewicowe", "Centrowe", "Umiarkowanie prawicowe", "Skrajnie prawicowe", "Trudno powiedzieć")
+ggplot(data,aes(x=reorder(Labels, Var1), y=Freq)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle = 0), text = element_text(size=15)) 
+ggsave("charts_frequencies/left_right.png", width = 15, height = 7)
+
+data <- as.data.frame(table(respondents$q21))
+data$Var1 <- as.numeric(as.character(data$Var1))
+data$Labels <- c("Prawo i Sprawiedliwość", "Platforma Obywatelska", "Lewica", "Konfederacja", "Polskie Stronnictwo Ludowe", "Inna", "Nie głosował(a)bym", "Trudno powiedzieć")
+ggplot(data,aes(x=reorder(Labels, Var1), y=Freq)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle = 0), text = element_text(size=15))
+ggsave("charts_frequencies/party.png", width = 15, height = 7)
+
+data <- as.data.frame(table(respondents$q24))
+data$Var1 <- as.numeric(as.character(data$Var1))
+data$Labels <- c("Liberalne", "Konserwatywne", "Socjalistyczne", "Socjaldemokratyczne", "Nacjonalistyczne", "Libertariańskie", "Anarchistyczne", "Inne", "Niesprecyzowane")
+ggplot(data,aes(x=reorder(Labels, Var1), y=Freq)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle = 0), text = element_text(size=15))
+ggsave("charts_frequencies/ideologies.png", width = 15, height = 7)
+
+data <- as.data.frame(table(respondents$q15))
+data$Var1 <- as.numeric(as.character(data$Var1))
+data$Labels <- c("17", "18", "19", "20", "21", "22", "23", "24", "25")
+ggplot(data,aes(x=reorder(Labels, Var1), y=Freq)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle = 0), text = element_text(size=15))
+ggsave("charts_frequencies/age.png", width = 15, height = 7)
+
+data <- as.data.frame(table(respondents$q14))
+data$Var1 <- as.numeric(as.character(data$Var1))
+data$Labels <- c("Kobieta", "Mężczyzna", "Nie chcę ujawniać")
+ggplot(data,aes(x=reorder(Labels, Var1), y=Freq)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle = 0), text = element_text(size=15))
+ggsave("charts_frequencies/gender.png", width = 15, height = 7)
+
+data <- as.data.frame(table(respondents$q16))
+data$Var1 <- as.numeric(as.character(data$Var1))
+data$Labels <- c(">500 tys.", "100-500 tys.", "50-100 tys.", "20-50 tys.", "<20 tys.", "Wieś")
+ggplot(data,aes(x=reorder(Labels, Var1), y=Freq)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle = 0), text = element_text(size=15))
+ggsave("charts_frequencies/origin.png", width = 15, height = 7)
+
+data <- as.data.frame(table(respondents$q17))
+data$Var1 <- as.numeric(as.character(data$Var1))
+data$Labels <- c("Studiuję i pracuję", "Studiuję (i nie pracuję)", "Pracuję (i nie studiuję)", "Jestem uczniem/uczennicą szkoły średniej", "Inne")
+ggplot(data,aes(x=reorder(Labels, Var1), y=Freq)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle = 0), text = element_text(size=15))
+ggsave("charts_frequencies/occupation.png", width = 15, height = 7)
+
 # dzielę wszystkie wyniki na respondentów 
 results_personal <- split(results, results$RID)
 best_tables <- as.data.frame(sapply(results_personal, function(x) table(factor(x$pref1, 1:16))))
@@ -45,26 +97,81 @@ worst_tables <- as.data.frame(sapply(results_personal, function(x) table(factor(
 # tworzę dla każdego respondenta wektor różnic
 personal_scores <- best_tables - worst_tables
 
+# i zapisuję go do ramki ze wszystkimi danymi o respondentach
+respondents <- respondents[order( respondents[,1] ),]
+respondents <- cbind(respondents, as.data.frame(t(as.matrix(personal_scores))))
+
 # obliczam dystansy (w normie euklidesowej) między wektorami różnic poszczególnych respondentów
 distances <- dist(t(as.matrix(personal_scores)))
 distances_mtrx <- as.matrix(distances) 
 distances_frame <- melt(as.matrix(distances), varnames = c("person1", "person2"))
 
-# wykonuję algorytm klastrowania Warda, dzielę na 5 grup i zapisuję grupy
-fit <- hclust(distances, method="ward.D")
-plot(fit)
-rect.hclust(fit, k=5, border="red")
-groups <- cutree(fit, k=5)
+# wykonuję algorytm klastrowania Warda
+fit <- hclust(distances, method="ward.D2")
+colors = c("red", "blue", "green", "black", "yellow", "purple", "brown", "navy")
 
-# dzielę respondentów według grup
-respondents["group"] <- groups
-tapply(respondents$q20, respondents$group, mean)
-respondents_groups <- split(respondents, respondents$group)
-plot(respondents_groups$`1`$q20)
-plot(respondents_groups$`2`$q20)
-plot(respondents_groups$`3`$q20)
-plot(respondents_groups$`4`$q20)
-plot(respondents_groups$`5`$q20)
+# dzielę na 2 grupy i zapisuję grupy
+groups2 <- cutree(fit, k=2)
+pdf(file="g2.pdf")
+plot(as.phylo(fit), type = "fan", tip.color = colors[groups2],
+     label.offset = 1, cex = 0.7)
+dev.off()
+
+# dzielę na 5 grup i zapisuję grupy
+groups5 <- cutree(fit, k=5)
+pdf(file="g5.pdf")
+plot(as.phylo(fit), type = "fan", tip.color = colors[groups5],
+     label.offset = 1, cex = 0.7)
+dev.off()
+
+# dzielę na 5 grup i zapisuję grupy
+groups8 <- cutree(fit, k=8)
+pdf(file="g8.pdf")
+plot(as.phylo(fit), type = "fan", tip.color = colors[groups8],
+     label.offset = 1, cex = 0.7)
+dev.off()
+
+respondents["group2"] <- groups2
+respondents["group5"] <- groups5
+respondents["group8"] <- groups8
+
+# dzielę respondentów według grup - na 2, zapisuję ich uśrednione preferencje
+respondens_by2 <- split(respondents, respondents$group2)
+pref2 <- rbind(getMeanPreferences(respondens_by2$`1`), getMeanPreferences(respondens_by2$`2`))
+print("Na 2, left_right")
+prop.table(table(respondens_by2$`1`$q20))
+prop.table(table(respondens_by2$`2`$q20))
+
+# dzielę respondentów według grup - na 5, zapisuję ich uśrednione preferencje
+respondens_by5 <- split(respondents, respondents$group5)
+pref5 <- rbind(getMeanPreferences(respondens_by5$`1`), getMeanPreferences(respondens_by5$`2`),
+               getMeanPreferences(respondens_by5$`3`), getMeanPreferences(respondens_by5$`4`),
+               getMeanPreferences(respondens_by5$`5`))
+print("Na 5, left_right")
+prop.table(table(respondens_by5$`1`$q20))
+prop.table(table(respondens_by5$`2`$q20))
+prop.table(table(respondens_by5$`3`$q20))
+prop.table(table(respondens_by5$`4`$q20))
+prop.table(table(respondens_by5$`5`$q20))
+
+# dzielę respondentów według grup - na 8, zapisuję ich uśrednione preferencje
+respondens_by8 <- split(respondents, respondents$group8)
+table(respondents$group8)
+table(respondents$group5)
+pref8 <- rbind(getMeanPreferences(respondens_by8$`1`), getMeanPreferences(respondens_by8$`2`),
+               getMeanPreferences(respondens_by8$`3`), getMeanPreferences(respondens_by8$`4`),
+               getMeanPreferences(respondens_by8$`5`), getMeanPreferences(respondens_by8$`6`),
+               getMeanPreferences(respondens_by8$`7`), getMeanPreferences(respondens_by8$`8`))
+
+print("Na 8, left_right")
+prop.table(table(respondens_by8$`1`$q20))
+prop.table(table(respondens_by8$`2`$q20))
+prop.table(table(respondens_by8$`3`$q20))
+prop.table(table(respondens_by8$`4`$q20))
+prop.table(table(respondens_by8$`5`$q20))
+prop.table(table(respondens_by8$`6`$q20))
+prop.table(table(respondens_by8$`7`$q20))
+prop.table(table(respondens_by8$`8`$q20))
 
 ```
 
