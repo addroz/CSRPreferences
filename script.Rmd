@@ -7,6 +7,8 @@ This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute
 
 Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
 
+
+1. Import bibliotek z których korzystam, definicje kilku przydatnych funkcji
 ```{r}
 library(dendextend)
 library(circlize)
@@ -16,6 +18,7 @@ library(reshape2)
 library(graphics)
 library(ape)
 library(ggplot2)
+library(dunn.test)
 
 getMeanPreferences <- function(x) {
   c(mean(x$`1`), mean(x$`2`), mean(x$`3`), mean(x$`4`), mean(x$`5`),
@@ -30,8 +33,10 @@ getSdPreferences <- function(x) {
     sd(x$`11`), sd(x$`12`), sd(x$`13`), sd(x$`14`), sd(x$`15`),
     sd(x$`16`))
 }
+```
 
-
+2. Wczytywanie i filtrowanie danych, przygotowanie podstaw
+```{r}
 # wczytuję dane o respondentach z pliku
 respondents <- read.csv(file = 'respondents.csv')
 respondents <- respondents[c("RID", "q20", "q21", "q24", "q15", "q14", "q16", "q17")]
@@ -55,7 +60,10 @@ results$pref4 <- worst
 
 # wyfiltrowuję tylko tych respondentów którzy odpowiedzieli na wszystkie pytania eksperymentalne
 respondents <- filter(respondents, RID %in% freq$Var1)
+```
 
+3. Wykresy obrazujące rozkład odpowiedzi na pytania ankietowe w populacji
+```{r}
 chart_font_size <- 30
 # przygotowuję wykresy z info o respondentach
 data <- as.data.frame(table(respondents$q20))
@@ -99,7 +107,10 @@ data$Var1 <- as.numeric(as.character(data$Var1))
 data$Labels <- c("Studiuję i pracuję", "Studiuję", "Pracuję", "Szkoła średnia", "Inne")
 ggplot(data,aes(x=reorder(Labels, Var1), y=Freq)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle = 0), text = element_text(size=chart_font_size))
 ggsave("charts_frequencies/occupation.png", width = 15, height = 7)
+```
 
+4. Przygotowanie danych o preferencjach poszczególnych respondentów
+```{r}
 # dzielę wszystkie wyniki na respondentów 
 results_personal <- split(results, results$RID)
 best_tables <- as.data.frame(sapply(results_personal, function(x) table(factor(x$pref1, 1:16))))
@@ -111,7 +122,11 @@ personal_scores <- best_tables - worst_tables
 # i zapisuję go do ramki ze wszystkimi danymi o respondentach
 respondents <- respondents[order( respondents[,1] ),]
 respondents <- cbind(respondents, as.data.frame(t(as.matrix(personal_scores))))
+respondents
+```
 
+5. Algorytm grupowania i przygotowanie wykresów pokazujących grupy
+```{r}
 # obliczam dystansy (w normie euklidesowej) między wektorami różnic poszczególnych respondentów
 distances <- dist(t(as.matrix(personal_scores)))
 distances_mtrx <- as.matrix(distances) 
@@ -142,6 +157,469 @@ pdf(file="g3.pdf")
 plot(phyloFit, type = "fan",edge.color=colors[edge.clus], show.tip.label = FALSE)
 dev.off()
 
+respondents["group2"] <- groups2
+respondents["group3"] <- groups3
+```
+
+6. Analiza statystyczna podziału na dwie grupy
+```{r}
+pref1 <- as.data.frame(getMeanPreferences(respondents))
+prefSD1 <- as.data.frame(getSdPreferences(respondents))
+
+# dzielę respondentów według grup - na 2, zapisuję ich uśrednione preferencje
+respondens_by2 <- split(respondents, respondents$group2)
+pref2 <- rbind(getMeanPreferences(respondens_by2$`1`), getMeanPreferences(respondens_by2$`2`))
+prefSD2 <- rbind(getSdPreferences(respondens_by2$`1`), getSdPreferences(respondens_by2$`2`))
+sizes2 <- c(nrow(respondens_by2$`1`), nrow(respondens_by2$`2`))
+
+# zapisuję frakcje odpowiedzi na pytania dot. poglądów politycznych
+leftRight_by2 <- rbind(as.vector(table(factor(respondens_by2$`1`$q20, 1:6))),
+                       as.vector(table(factor(respondens_by2$`2`$q20, 1:6))))
+
+leftRightProp_by2 <- rbind(as.vector(prop.table(table(factor(respondens_by2$`1`$q20, 1:6)))),
+                       as.vector(prop.table(table(factor(respondens_by2$`2`$q20, 1:6)))))
+
+party_by2 <- rbind(as.vector(table(factor(respondens_by2$`1`$q21, 1:8))),
+                   as.vector(table(factor(respondens_by2$`2`$q21, 1:8))))
+
+partyProp_by2 <- rbind(as.vector(prop.table(table(factor(respondens_by2$`1`$q21, 1:8)))),
+                   as.vector(prop.table(table(factor(respondens_by2$`2`$q21, 1:8)))))
+
+ideology_by2 <- rbind(as.vector(table(factor(respondens_by2$`1`$q24, 1:9))),
+                      as.vector(table(factor(respondens_by2$`2`$q24, 1:9))))
+
+ideologyProp_by2 <- rbind(as.vector(prop.table(table(factor(respondens_by2$`1`$q24, 1:9)))),
+                      as.vector(prop.table(table(factor(respondens_by2$`2`$q24, 1:9)))))
+
+age_by2 <- rbind(as.vector(table(factor(respondens_by2$`1`$q15, 1:9))),
+                      as.vector(table(factor(respondens_by2$`2`$q15, 1:9))))
+
+gender_by2 <- rbind(as.vector(table(factor(respondens_by2$`1`$q14, 1:4))),
+                      as.vector(table(factor(respondens_by2$`2`$q14, 1:4))))
+
+origin_by2 <- rbind(as.vector(table(factor(respondens_by2$`1`$q16, 1:6))),
+                      as.vector(table(factor(respondens_by2$`2`$q16, 1:6))))
+
+occupation_by2 <- rbind(as.vector(table(factor(respondens_by2$`1`$q17, 1:5))),
+                      as.vector(table(factor(respondens_by2$`2`$q17, 1:5))))
+
+occupationProp_by2 <- rbind(as.vector(prop.table(table(factor(respondens_by2$`1`$q17, 1:5)))),
+                      as.vector(prop.table(table(factor(respondens_by2$`2`$q17, 1:5)))))
+
+# wykonuję testy istotności
+print("By 2 - testy istotności dla osi lewica-prawica")
+prop.test(leftRight_by2[,1], sizes2)$p.value
+prop.test(leftRight_by2[,2], sizes2)$p.value
+prop.test(leftRight_by2[,3], sizes2)$p.value
+prop.test(leftRight_by2[,4], sizes2)$p.value
+prop.test(leftRight_by2[,5], sizes2)$p.value
+prop.test(leftRight_by2[,6], sizes2)$p.value
+
+print("By 2 - testy istotności dla partii")
+
+prop.test(party_by2[,1], sizes2)$p.value
+prop.test(party_by2[,2], sizes2)$p.value
+prop.test(party_by2[,3], sizes2)$p.value
+prop.test(party_by2[,4], sizes2)$p.value
+prop.test(party_by2[,5], sizes2)$p.value
+prop.test(party_by2[,6], sizes2)$p.value
+prop.test(party_by2[,7], sizes2)$p.value
+prop.test(party_by2[,8], sizes2)$p.value
+
+print("By 2 - testy istotności dla ideologii")
+prop.test(ideology_by2[,1], sizes2)$p.value
+prop.test(ideology_by2[,2], sizes2)$p.value
+prop.test(ideology_by2[,3], sizes2)$p.value
+prop.test(ideology_by2[,4], sizes2)$p.value
+prop.test(ideology_by2[,5], sizes2)$p.value
+prop.test(ideology_by2[,6], sizes2)$p.value
+prop.test(ideology_by2[,7], sizes2)$p.value
+prop.test(ideology_by2[,8], sizes2)$p.value
+prop.test(ideology_by2[,9], sizes2)$p.value
+
+print("By 2 - testy istotności dla wieku")
+prop.test(age_by2[,1], sizes2)$p.value
+prop.test(age_by2[,2], sizes2)$p.value
+prop.test(age_by2[,3], sizes2)$p.value
+prop.test(age_by2[,4], sizes2)$p.value
+prop.test(age_by2[,5], sizes2)$p.value
+prop.test(age_by2[,6], sizes2)$p.value
+prop.test(age_by2[,7], sizes2)$p.value
+prop.test(age_by2[,8], sizes2)$p.value
+prop.test(age_by2[,9], sizes2)$p.value
+
+print("By 2 - testy istotności dla płci")
+prop.test(gender_by2[,1], sizes2)$p.value
+prop.test(gender_by2[,2], sizes2)$p.value
+prop.test(gender_by2[,4], sizes2)$p.value
+
+print("By 2 - testy istotności dla pochodzenia")
+prop.test(origin_by2[,1], sizes2)$p.value
+prop.test(origin_by2[,2], sizes2)$p.value
+prop.test(origin_by2[,3], sizes2)$p.value
+prop.test(origin_by2[,4], sizes2)$p.value
+prop.test(origin_by2[,5], sizes2)$p.value
+prop.test(origin_by2[,6], sizes2)$p.value
+
+print("By 2 - testy istotności dla głównego zajęcia")
+prop.test(occupation_by2[,1], sizes2)$p.value
+prop.test(occupation_by2[,2], sizes2)$p.value
+prop.test(occupation_by2[,3], sizes2)$p.value
+prop.test(occupation_by2[,4], sizes2)$p.value
+prop.test(occupation_by2[,5], sizes2)$p.value
+```
+
+6. Analiza statystyczna podziału na trzy grupy
+```{r}
+# dzielę respondentów według grup - na 3, zapisuję ich uśrednione preferencje
+respondens_by3 <- split(respondents, respondents$group3)
+pref3 <- rbind(getMeanPreferences(respondens_by3$`1`), getMeanPreferences(respondens_by3$`2`), getMeanPreferences(respondens_by3$`3`))
+prefSD3 <- rbind(getSdPreferences(respondens_by3$`1`), getSdPreferences(respondens_by3$`2`), getSdPreferences(respondens_by3$`3`))
+sizes3 <- c(nrow(respondens_by3$`1`), nrow(respondens_by3$`2`), nrow(respondens_by3$`3`))
+
+# zapisuję frakcje odpowiedzi na pytania dot. poglądów politycznych
+leftRight_by3 <- rbind(as.vector(table(factor(respondens_by3$`1`$q20, 1:6))),
+                       as.vector(table(factor(respondens_by3$`2`$q20, 1:6))),
+                       as.vector(table(factor(respondens_by3$`3`$q20, 1:6))))
+
+leftRightProp_by3 <- rbind(as.vector(prop.table(table(factor(respondens_by3$`1`$q20, 1:6)))),
+                       as.vector(prop.table(table(factor(respondens_by3$`2`$q20, 1:6)))),
+                       as.vector(prop.table(table(factor(respondens_by3$`3`$q20, 1:6)))))
+
+party_by3 <- rbind(as.vector(table(factor(respondens_by3$`1`$q21, 1:8))),
+                   as.vector(table(factor(respondens_by3$`2`$q21, 1:8))),
+                   as.vector(table(factor(respondens_by3$`3`$q21, 1:8))))
+
+partyProp_by3 <- rbind(as.vector(prop.table(table(factor(respondens_by3$`1`$q21, 1:8)))),
+                   as.vector(prop.table(table(factor(respondens_by3$`2`$q21, 1:8)))),
+                   as.vector(prop.table(table(factor(respondens_by3$`3`$q21, 1:8)))))
+
+ideology_by3 <- rbind(as.vector(table(factor(respondens_by3$`1`$q24, 1:9))),
+                      as.vector(table(factor(respondens_by3$`2`$q24, 1:9))),
+                      as.vector(table(factor(respondens_by3$`3`$q24, 1:9))))
+
+ideologyProp_by3 <- rbind(as.vector(prop.table(table(factor(respondens_by3$`1`$q24, 1:9)))),
+                      as.vector(prop.table(table(factor(respondens_by3$`2`$q24, 1:9)))),
+                      as.vector(prop.table(table(factor(respondens_by3$`3`$q24, 1:9)))))
+
+age_by3 <- rbind(as.vector(table(factor(respondens_by3$`1`$q15, 1:9))),
+                 as.vector(table(factor(respondens_by3$`2`$q15, 1:9))),
+                 as.vector(table(factor(respondens_by3$`3`$q15, 1:9))))
+
+gender_by3 <- rbind(as.vector(table(factor(respondens_by3$`1`$q14, 1:4))),
+                    as.vector(table(factor(respondens_by3$`2`$q14, 1:4))),
+                    as.vector(table(factor(respondens_by3$`3`$q14, 1:4))))
+
+origin_by3 <- rbind(as.vector(table(factor(respondens_by3$`1`$q16, 1:6))),
+                    as.vector(table(factor(respondens_by3$`2`$q16, 1:6))),
+                    as.vector(table(factor(respondens_by3$`3`$q16, 1:6))))
+
+occupation_by3 <- rbind(as.vector(table(factor(respondens_by3$`1`$q17, 1:5))),
+                        as.vector(table(factor(respondens_by3$`2`$q17, 1:5))),
+                        as.vector(table(factor(respondens_by3$`3`$q17, 1:5))))
+
+# wykonuję testy istotności
+print("By 3 - testy istotności dla osi lewica-prawica")
+pairwise.prop.test(leftRight_by3[,1], sizes3, p.adjust.method="hommel")
+pairwise.prop.test(leftRight_by3[,2] + leftRight_by3[,1], sizes3, p.adjust.method="hommel")
+pairwise.prop.test(leftRight_by3[,3], sizes3, p.adjust.method="hommel")
+pairwise.prop.test(leftRight_by3[,4] + leftRight_by3[,5], sizes3 - leftRight_by3[,6])
+pairwise.prop.test(leftRight_by3[,5], sizes3, p.adjust.method="hommel")
+
+print("By 3 - testy istotności dla partii")
+pairwise.prop.test(party_by3[,1], sizes3, p.adjust.method="none")
+pairwise.prop.test(party_by3[,2], sizes3, p.adjust.method="none")
+pairwise.prop.test(party_by3[,3], sizes3, p.adjust.method="none")
+pairwise.prop.test(party_by3[,4], sizes3 - party_by3[,8], p.adjust.method="none")
+pairwise.prop.test(party_by3[,5], sizes3, p.adjust.method="none")
+pairwise.prop.test(party_by3[,6], sizes3, p.adjust.method="none")
+pairwise.prop.test(party_by3[,7], sizes3, p.adjust.method="none")
+pairwise.prop.test(party_by3[,8], sizes3, p.adjust.method="none")
+
+print("By 3 - testy istotności dla ideologii")
+pairwise.prop.test(ideology_by3[,1], sizes3, p.adjust.method="none")
+pairwise.prop.test(ideology_by3[,2], sizes3, p.adjust.method="hommel")
+pairwise.prop.test(ideology_by3[,2] + ideology_by3[,5] + ideology_by3[,6], sizes3, p.adjust.method="none")
+pairwise.prop.test(ideology_by3[,3], sizes3, p.adjust.method="none")
+pairwise.prop.test(ideology_by3[,4], sizes3, p.adjust.method="none")
+pairwise.prop.test(ideology_by3[,5], sizes3, p.adjust.method="none")
+pairwise.prop.test(ideology_by3[,6], sizes3, p.adjust.method="none")
+pairwise.prop.test(ideology_by3[,7], sizes3, p.adjust.method="none")
+pairwise.prop.test(ideology_by3[,8], sizes3, p.adjust.method="none")
+pairwise.prop.test(ideology_by3[,9], sizes3, p.adjust.method="none")
+
+ideologyProp_by3[,2] + ideologyProp_by3[,5] + ideologyProp_by3[,6]
+
+print("By 3 - testy istotności dla wieku")
+pairwise.prop.test(age_by3[,1], sizes3)
+pairwise.prop.test(age_by3[,2], sizes3)
+pairwise.prop.test(age_by3[,3], sizes3)
+pairwise.prop.test(age_by3[,4], sizes3)
+pairwise.prop.test(age_by3[,5], sizes3)
+pairwise.prop.test(age_by3[,6], sizes3)
+pairwise.prop.test(age_by3[,7], sizes3)
+pairwise.prop.test(age_by3[,8], sizes3)
+pairwise.prop.test(age_by3[,9], sizes3)
+
+print("By 3 - testy istotności dla płci")
+pairwise.prop.test(gender_by3[,1], sizes3)
+pairwise.prop.test(gender_by3[,2], sizes3)
+pairwise.prop.test(gender_by3[,4], sizes3)
+
+print("By 3 - testy istotności dla pochodzenia")
+pairwise.prop.test(origin_by3[,1], sizes3)
+pairwise.prop.test(origin_by3[,2], sizes3)
+pairwise.prop.test(origin_by3[,3], sizes3)
+pairwise.prop.test(origin_by3[,4], sizes3)
+pairwise.prop.test(origin_by3[,5], sizes3)
+pairwise.prop.test(origin_by3[,6], sizes3)
+
+print("By 3 - testy istotności dla głównego zajęcia")
+pairwise.prop.test(occupation_by3[,1], sizes3)
+pairwise.prop.test(occupation_by3[,2], sizes3)
+pairwise.prop.test(occupation_by3[,3], sizes3)
+pairwise.prop.test(occupation_by3[,4], sizes3)
+pairwise.prop.test(occupation_by3[,5], sizes3)
+```
+
+7. Testy Kruskalla-Wallisa dla równości średnich preferencji między grupami
+```{r}
+kruskal.test(`1` ~ group2, data = respondents)
+kruskal.test(`2` ~ group2, data = respondents)
+kruskal.test(`3` ~ group2, data = respondents)
+kruskal.test(`4` ~ group2, data = respondents)
+kruskal.test(`5` ~ group2, data = respondents)
+kruskal.test(`6` ~ group2, data = respondents)
+kruskal.test(`7` ~ group2, data = respondents)
+kruskal.test(`8` ~ group2, data = respondents)
+kruskal.test(`9` ~ group2, data = respondents)
+kruskal.test(`10` ~ group2, data = respondents)
+kruskal.test(`11` ~ group2, data = respondents)
+kruskal.test(`12` ~ group2, data = respondents)
+kruskal.test(`13` ~ group2, data = respondents)
+kruskal.test(`14` ~ group2, data = respondents)
+kruskal.test(`15` ~ group2, data = respondents)
+kruskal.test(`16` ~ group2, data = respondents)
+
+dunn.test(respondents$`1`, respondents$group3, method="bonferroni")
+dunn.test(respondents$`2`, respondents$group3, method="bonferroni")
+dunn.test(respondents$`3`, respondents$group3, method="bonferroni")
+dunn.test(respondents$`4`, respondents$group3, method="bonferroni")
+dunn.test(respondents$`5`, respondents$group3, method="bonferroni")
+dunn.test(respondents$`6`, respondents$group3, method="bonferroni")
+dunn.test(respondents$`7`, respondents$group3, method="bonferroni")
+dunn.test(respondents$`8`, respondents$group3, method="bonferroni")
+dunn.test(respondents$`9`, respondents$group3, method="bonferroni")
+dunn.test(respondents$`10`, respondents$group3, method="bonferroni")
+dunn.test(respondents$`11`, respondents$group3, method="bonferroni")
+dunn.test(respondents$`12`, respondents$group3, method="bonferroni")
+dunn.test(respondents$`13`, respondents$group3, method="bonferroni")
+dunn.test(respondents$`14`, respondents$group3, method="bonferroni")
+dunn.test(respondents$`15`, respondents$group3, method="bonferroni")
+dunn.test(respondents$`16`, respondents$group3, method="bonferroni")
+```
+
+8. Przygotowanie wykresów z informacjami o preferencjach
+```{r}
+# przygotowuję wykresy z info o preferencjach respondentów - całość
+goalsNumbers <- c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16")
+data <- data.frame(Labels=goalsNumbers)
+data$sd <- prefSD1$`getSdPreferences(respondents)`
+data$mean <- pref1$`getMeanPreferences(respondents)` 
+ggplot(data,aes(x=reorder(Labels, -mean), y=mean)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle =0), text = element_text(size=chart_font_size)) 
+ggsave("charts_preferences/whole_mean.png", width = 15, height = 7)
+
+ggplot(data,aes(x=reorder(Labels, -mean), y=sd)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle =0), text = element_text(size=chart_font_size)) 
+ggsave("charts_preferences/whole_sd.png", width = 15, height = 7)
+
+# przygotowuję wykresy z info o preferencjach respondentów - podział na 2
+data$sd <- t(as.table(prefSD2))[,1]
+data$mean <-  t(as.table(pref2))[,1]
+ggplot(data,aes(x=reorder(Labels, -mean), y=mean)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle =0), text = element_text(size=chart_font_size)) 
+ggsave("charts_preferences/subgroup1_2_mean.png", width = 15, height = 7)
+
+ggplot(data,aes(x=reorder(Labels, -mean), y=sd)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle =0), text = element_text(size=chart_font_size)) 
+ggsave("charts_preferences/subgroup1_2_sd.png", width = 15, height = 7)
+
+data$sd <- t(as.table(prefSD2))[,2]
+data$mean <-  t(as.table(pref2))[,2]
+ggplot(data,aes(x=reorder(Labels, -mean), y=mean)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle =0), text = element_text(size=chart_font_size)) 
+ggsave("charts_preferences/subgroup2_2_mean.png", width = 15, height = 7)
+
+ggplot(data,aes(x=reorder(Labels, -mean), y=sd)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle =0), text = element_text(size=chart_font_size)) 
+ggsave("charts_preferences/subgroup2_2_sd.png", width = 15, height = 7)
+
+# przygotowuję wykresy z info o preferencjach respondentów - podział na 3
+data$sd <- t(as.table(prefSD3))[,2]
+data$mean <-  t(as.table(pref3))[,2]
+ggplot(data,aes(x=reorder(Labels, -mean), y=mean)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle =0), text = element_text(size=chart_font_size)) 
+ggsave("charts_preferences/subgroup2_3_mean.png", width = 15, height = 7)
+
+ggplot(data,aes(x=reorder(Labels, -mean), y=sd)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle =0), text = element_text(size=chart_font_size)) 
+ggsave("charts_preferences/subgroup2_3_sd.png", width = 15, height = 7)
+
+data$sd <- t(as.table(prefSD3))[,3]
+data$mean <-  t(as.table(pref3))[,3]
+ggplot(data,aes(x=reorder(Labels, -mean), y=mean)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle =0), text = element_text(size=chart_font_size)) 
+ggsave("charts_preferences/subgroup3_3_mean.png", width = 15, height = 7)
+
+ggplot(data,aes(x=reorder(Labels, -mean), y=sd)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle =0), text = element_text(size=chart_font_size)) 
+ggsave("charts_preferences/subgroup3_3_sd.png", width = 15, height = 7)
+```
+
+
+9. Przygotowanie wykresów z informacjami o poglądach politycznych w podgrupach
+```{r}
+data <- as.data.frame(t(leftRightProp_by2))
+data$Labels <- c("Skr. lew.", "Um. lew.", "Centr.", "Um. praw", "Skr. praw.", "Trudno pow.")
+data$Var1 <- 1:6
+ggplot(data,aes(x=reorder(Labels, Var1), y=V1)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle = 10), text = element_text(size=chart_font_size + 10)) 
+ggsave("charts_frequencies/by2/left_right_1.png", width = 15, height = 7)
+ggplot(data,aes(x=reorder(Labels, Var1), y=V2)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle = 10), text = element_text(size=chart_font_size + 10)) 
+ggsave("charts_frequencies/by2/left_right_2.png", width = 15, height = 7)
+
+data <- as.data.frame(t(partyProp_by2))
+data$Labels <- c("PiS", "PO", "Lewica", "Konf.", "PSL", "Inna", "Nie głos.", "Tr. pow.")
+data$Var1 <- 1:8
+ggplot(data,aes(x=reorder(Labels, Var1), y=V1)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle = 10), text = element_text(size=chart_font_size + 10)) 
+ggsave("charts_frequencies/by2/party_1.png", width = 15, height = 7)
+ggplot(data,aes(x=reorder(Labels, Var1), y=V2)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle = 10), text = element_text(size=chart_font_size + 10)) 
+ggsave("charts_frequencies/by2/party_2.png", width = 15, height = 7)
+
+data <- as.data.frame(t(leftRightProp_by3))
+data$Labels <- c("Skr. lew.", "Um. lew.", "Centr.", "Um. praw", "Skr. praw.", "Trudno pow.")
+data$Var1 <- 1:6
+ggplot(data,aes(x=reorder(Labels, Var1), y=V2)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle = 10), text = element_text(size=chart_font_size + 10)) 
+ggsave("charts_frequencies/by3/left_right_2.png", width = 15, height = 7)
+ggplot(data,aes(x=reorder(Labels, Var1), y=V3)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle = 10), text = element_text(size=chart_font_size + 10)) 
+ggsave("charts_frequencies/by3/left_right_3.png", width = 15, height = 7)
+
+data <- as.data.frame(t(partyProp_by3))
+data$Labels <- c("PiS", "PO", "Lewica", "Konf.", "PSL", "Inna", "Nie głos.", "Tr. pow.")
+data$Var1 <- 1:8
+ggplot(data,aes(x=reorder(Labels, Var1), y=V2)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle = 10), text = element_text(size=chart_font_size + 10)) 
+ggsave("charts_frequencies/by3/party_2.png", width = 15, height = 7)
+ggplot(data,aes(x=reorder(Labels, Var1), y=V3)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle = 10), text = element_text(size=chart_font_size + 10)) 
+ggsave("charts_frequencies/by3/party_3.png", width = 15, height = 7)
+```
+
+10. Alternatywne podejście - podział na prawicę i lewicę - przygotowuję dane
+```{r}
+respondents$LeftOrRight <- sapply(respondents$q20, function(x) {
+  if(x == 1 || x == 2) return(1);
+  if(x == 3) return(2);
+  if(x == 4 || x == 5) return(3);
+  return(4);
+})
+
+respondens_byLeftRight <- split(respondents, respondents$LeftOrRight)
+
+pref_byLeftRight <- rbind(getMeanPreferences(respondens_byLeftRight$`1`),
+                          getMeanPreferences(respondens_byLeftRight$`2`),
+                          getMeanPreferences(respondens_byLeftRight$`3`),
+                          getMeanPreferences(respondens_byLeftRight$`4`))
+```
+
+11. Alternatywne podejście - podział na prawicę i lewicę - przygotowuję wykresy
+```{r}
+goalsNumbers <- c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16")
+data <- data.frame(Labels=goalsNumbers)
+data$mean <- t(as.table(pref_byLeftRight))[,1]
+ggplot(data,aes(x=reorder(Labels, -mean), y=mean)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle =0), text = element_text(size=chart_font_size)) 
+ggsave("charts_preferences/left_leftRight_mean.png", width = 15, height = 7)
+
+data$mean <- t(as.table(pref_byLeftRight))[,2]
+ggplot(data,aes(x=reorder(Labels, -mean), y=mean)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle =0), text = element_text(size=chart_font_size)) 
+ggsave("charts_preferences/center_leftRight_mean.png", width = 15, height = 7)
+
+data$mean <- t(as.table(pref_byLeftRight))[,3]
+ggplot(data,aes(x=reorder(Labels, -mean), y=mean)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle =0), text = element_text(size=chart_font_size)) 
+ggsave("charts_preferences/right_leftRight_mean.png", width = 15, height = 7)
+
+data$mean <- t(as.table(pref_byLeftRight))[,4]
+ggplot(data,aes(x=reorder(Labels, -mean), y=mean)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle =0), text = element_text(size=chart_font_size)) 
+ggsave("charts_preferences/no_leftRight_mean.png", width = 15, height = 7)
+```
+
+12. Alternatywne podejście - podział na prawicę i lewicę - sprawdzam istotność statystyczną
+```{r}
+dunn.test(respondents$`1`, respondents$LeftOrRight, method="bonferroni")
+dunn.test(respondents$`2`, respondents$LeftOrRight, method="bonferroni")
+dunn.test(respondents$`3`, respondents$LeftOrRight, method="bonferroni")
+dunn.test(respondents$`4`, respondents$LeftOrRight, method="bonferroni")
+dunn.test(respondents$`5`, respondents$LeftOrRight, method="bonferroni")
+dunn.test(respondents$`6`, respondents$LeftOrRight, method="bonferroni")
+dunn.test(respondents$`7`, respondents$LeftOrRight, method="bonferroni")
+dunn.test(respondents$`8`, respondents$LeftOrRight, method="bonferroni")
+dunn.test(respondents$`9`, respondents$LeftOrRight, method="bonferroni")
+dunn.test(respondents$`10`, respondents$LeftOrRight, method="bonferroni")
+dunn.test(respondents$`11`, respondents$LeftOrRight, method="bonferroni")
+dunn.test(respondents$`12`, respondents$LeftOrRight, method="bonferroni")
+dunn.test(respondents$`13`, respondents$LeftOrRight, method="bonferroni")
+dunn.test(respondents$`14`, respondents$LeftOrRight, method="bonferroni")
+dunn.test(respondents$`15`, respondents$LeftOrRight, method="bonferroni")
+dunn.test(respondents$`16`, respondents$LeftOrRight, method="bonferroni")
+
+```
+
+13. Obliczenie korelacji rang Kendalla, testy istotności
+```{r}
+respondents_cor <- filter(respondents, q20 !=6)
+
+kendall <- c(cor(respondents_cor$q20, respondents_cor$`1`, method="kendall"),
+cor(respondents_cor$q20, respondents_cor$`2`, method="kendall"),
+cor(respondents_cor$q20, respondents_cor$`3`, method="kendall"),
+cor(respondents_cor$q20, respondents_cor$`4`, method="kendall"),
+cor(respondents_cor$q20, respondents_cor$`5`, method="kendall"),
+cor(respondents_cor$q20, respondents_cor$`6`, method="kendall"),
+cor(respondents_cor$q20, respondents_cor$`7`, method="kendall"),
+cor(respondents_cor$q20, respondents_cor$`8`, method="kendall"),
+cor(respondents_cor$q20, respondents_cor$`9`, method="kendall"),
+cor(respondents_cor$q20, respondents_cor$`10`, method="kendall"),
+cor(respondents_cor$q20, respondents_cor$`11`, method="kendall"),
+cor(respondents_cor$q20, respondents_cor$`12`, method="kendall"),
+cor(respondents_cor$q20, respondents_cor$`13`, method="kendall"),
+cor(respondents_cor$q20, respondents_cor$`14`, method="kendall"),
+cor(respondents_cor$q20, respondents_cor$`15`, method="kendall"),
+cor(respondents_cor$q20, respondents_cor$`16`, method="kendall"))
+
+test <- c(cor.test(respondents_cor$q20, respondents_cor$`1`, method="kendall")$p.value,
+cor.test(respondents_cor$q20, respondents_cor$`2`, method="kendall")$p.value,
+cor.test(respondents_cor$q20, respondents_cor$`3`, method="kendall")$p.value,
+cor.test(respondents_cor$q20, respondents_cor$`4`, method="kendall")$p.value,
+cor.test(respondents_cor$q20, respondents_cor$`5`, method="kendall")$p.value,
+cor.test(respondents_cor$q20, respondents_cor$`6`, method="kendall")$p.value,
+cor.test(respondents_cor$q20, respondents_cor$`7`, method="kendall")$p.value,
+cor.test(respondents_cor$q20, respondents_cor$`8`, method="kendall")$p.value,
+cor.test(respondents_cor$q20, respondents_cor$`9`, method="kendall")$p.value,
+cor.test(respondents_cor$q20, respondents_cor$`10`, method="kendall")$p.value,
+cor.test(respondents_cor$q20, respondents_cor$`11`, method="kendall")$p.value,
+cor.test(respondents_cor$q20, respondents_cor$`12`, method="kendall")$p.value,
+cor.test(respondents_cor$q20, respondents_cor$`13`, method="kendall")$p.value,
+cor.test(respondents_cor$q20, respondents_cor$`14`, method="kendall")$p.value,
+cor.test(respondents_cor$q20, respondents_cor$`15`, method="kendall")$p.value,
+cor.test(respondents_cor$q20, respondents_cor$`16`, method="kendall")$p.value)
+
+as.data.frame(test)
+kendall <- as.data.frame(kendall)
+```
+
+14. Genereuję wykres współczynnika korelacji 
+```{r}
+goalsNumbers <- c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16")
+data <- data.frame(Labels=goalsNumbers)
+data$value <- as.vector(kendall$kendall)
+ggplot(data,aes(x=reorder(Labels, -value), y=value)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle =0), text = element_text(size=chart_font_size)) 
+ggsave("charts_preferences/kendall.png", width = 15, height = 7)
+```
+
+15. Rzeczy których ostatecznie nie użyłem bo okazały się nieprzydatne w wyciągnięciu wniosków - głównie te same statystyki dla podziałów na więcej grup
+zachowałem je tutaj na wszelki wypadek
+```{r}
+
+# ostatecznie z tego zrezygnowałem bo 
+# ciężko przy takich podziałach uzyskać istotne wyniki
+
 # dzielę na 4 grupy i zapisuję grupy
 colors4 = c("red", "blue", "black", "green", "yellow", "purple", "brown", "navy")
 groups4 <- cutree(fit, k=4)
@@ -164,95 +642,18 @@ pdf(file="g5.pdf")
 plot(phyloFit, type = "fan",edge.color=colors5[edge.clus], show.tip.label = FALSE)
 dev.off()
 
-respondents["group2"] <- groups2
-respondents["group3"] <- groups3
+
+# dzielę na 8 grup i zapisuję grupy
+groups8 <- cutree(fit, k=8)
+pdf(file="g8.pdf")
+plot(as.phylo(fit), type = "fan", tip.color = colors[groups8],
+     label.offset = 1, cex = 0.7)
+dev.off()
+
+
 respondents["group4"] <- groups4
 respondents["group5"] <- groups5
-
-pref1 <- as.data.frame(getMeanPreferences(respondents))
-prefSD1 <- as.data.frame(getSdPreferences(respondents))
-
-# dzielę respondentów według grup - na 2, zapisuję ich uśrednione preferencje
-respondens_by2 <- split(respondents, respondents$group2)
-pref2 <- rbind(getMeanPreferences(respondens_by2$`1`), getMeanPreferences(respondens_by2$`2`))
-prefSD2 <- rbind(getSdPreferences(respondens_by2$`1`), getSdPreferences(respondens_by2$`2`))
-sizes2 <- c(nrow(respondens_by2$`1`), nrow(respondens_by2$`2`))
-
-# zapisuję frakcje odpowiedzi na pytania dot. poglądów politycznych
-leftRight_by2 <- rbind(as.vector(table(factor(respondens_by2$`1`$q20, 1:6))),
-                       as.vector(table(factor(respondens_by2$`2`$q20, 1:6))))
-
-party_by2 <- rbind(as.vector(table(factor(respondens_by2$`1`$q21, 1:8))),
-                   as.vector(table(factor(respondens_by2$`2`$q21, 1:8))))
-
-ideology_by2 <- rbind(as.vector(table(factor(respondens_by2$`1`$q24, 1:9))),
-                      as.vector(table(factor(respondens_by2$`2`$q24, 1:9))))
-
-# wykonuję testy istotności
-print("By 2 - testy istotności dla osi lewica-prawica")
-prop.test(leftRight_by2[,1], sizes2)$p.value
-prop.test(leftRight_by2[,2], sizes2)$p.value
-prop.test(leftRight_by2[,3], sizes2)$p.value
-prop.test(leftRight_by2[,4], sizes2)$p.value
-prop.test(leftRight_by2[,5], sizes2)$p.value
-
-print("By 2 - testy istotności dla partii")
-prop.test(party_by2[,1], sizes2)$p.value
-prop.test(party_by2[,2], sizes2)$p.value
-prop.test(party_by2[,3], sizes2)$p.value
-prop.test(party_by2[,4], sizes2)$p.value
-prop.test(party_by2[,5], sizes2)$p.value
-
-
-print("By 2 - testy istotności dla ideologii")
-prop.test(ideology_by2[,1], sizes2)$p.value
-prop.test(ideology_by2[,2], sizes2)$p.value
-prop.test(ideology_by2[,3], sizes2)$p.value
-prop.test(ideology_by2[,4], sizes2)$p.value
-prop.test(ideology_by2[,5], sizes2)$p.value
-
-# dzielę respondentów według grup - na 3, zapisuję ich uśrednione preferencje
-respondens_by3 <- split(respondents, respondents$group3)
-pref3 <- rbind(getMeanPreferences(respondens_by3$`1`), getMeanPreferences(respondens_by3$`2`), getMeanPreferences(respondens_by3$`3`))
-prefSD3 <- rbind(getSdPreferences(respondens_by3$`1`), getSdPreferences(respondens_by3$`2`), getSdPreferences(respondens_by3$`3`))
-sizes3 <- c(nrow(respondens_by3$`1`), nrow(respondens_by3$`2`), nrow(respondens_by3$`3`))
-
-# zapisuję frakcje odpowiedzi na pytania dot. poglądów politycznych
-leftRight_by3 <- rbind(as.vector(table(factor(respondens_by3$`1`$q20, 1:6))),
-                       as.vector(table(factor(respondens_by3$`2`$q20, 1:6))),
-                       as.vector(table(factor(respondens_by3$`3`$q20, 1:6))))
-
-party_by3 <- rbind(as.vector(table(factor(respondens_by3$`1`$q21, 1:8))),
-                   as.vector(table(factor(respondens_by3$`2`$q21, 1:8))),
-                   as.vector(table(factor(respondens_by3$`3`$q21, 1:8))))
-
-ideology_by3 <- rbind(as.vector(table(factor(respondens_by3$`1`$q24, 1:9))),
-                      as.vector(table(factor(respondens_by3$`2`$q24, 1:9))),
-                      as.vector(table(factor(respondens_by3$`3`$q24, 1:9))))
-
-# wykonuję testy istotności
-print("By 3 - testy istotności dla osi lewica-prawica")
-prop.test(leftRight_by3[,1], sizes3)$p.value
-prop.test(leftRight_by3[,2], sizes3)$p.value
-prop.test(leftRight_by3[,3], sizes3)$p.value
-prop.test(leftRight_by3[,4], sizes3)$p.value
-prop.test(leftRight_by3[,5], sizes3)$p.value
-
-print("By 3 - testy istotności dla partii")
-prop.test(party_by3[,1], sizes3)$p.value
-prop.test(party_by3[,2], sizes3)$p.value
-prop.test(party_by3[,3], sizes3)$p.value
-prop.test(party_by3[,4], sizes3)$p.value
-prop.test(party_by3[,5], sizes3)$p.value
-
-
-print("By 3 - testy istotności dla ideologii")
-prop.test(ideology_by3[,1], sizes3)$p.value
-prop.test(ideology_by3[,2], sizes3)$p.value
-prop.test(ideology_by3[,3], sizes3)$p.value
-prop.test(ideology_by3[,4], sizes3)$p.value
-prop.test(ideology_by3[,5], sizes3)$p.value
-
+respondents["group8"] <- groups8
 
 # dzielę respondentów według grup - na 4, zapisuję ich uśrednione preferencje
 respondens_by4 <- split(respondents, respondents$group4)
@@ -280,11 +681,11 @@ ideology_by4 <- rbind(as.vector(table(factor(respondens_by4$`1`$q24, 1:9))),
 
 # wykonuję testy istotności
 print("By 4 - testy istotności dla osi lewica-prawica")
-prop.test(leftRight_by4[,1], sizes4)$p.value
-prop.test(leftRight_by4[,2], sizes4)$p.value
-prop.test(leftRight_by4[,3], sizes4)$p.value
-prop.test(leftRight_by4[,4], sizes4)$p.value
-prop.test(leftRight_by4[,5], sizes4)$p.value
+pairwise.prop.test(leftRight_by4[,1], sizes4)
+pairwise.prop.test(leftRight_by4[,2], sizes4)
+pairwise.prop.test(leftRight_by4[,3], sizes4)
+pairwise.prop.test(leftRight_by4[,4], sizes4)
+pairwise.prop.test(leftRight_by4[,5], sizes4)
 
 print("By 4 - testy istotności dla partii")
 prop.test(party_by4[,1], sizes4)$p.value
@@ -307,7 +708,7 @@ pref5 <- rbind(getMeanPreferences(respondens_by5$`1`), getMeanPreferences(respon
                getMeanPreferences(respondens_by5$`3`), getMeanPreferences(respondens_by5$`4`),
                getMeanPreferences(respondens_by5$`5`))
 prefSD5 <- rbind(getSdPreferences(respondens_by5$`1`), getSdPreferences(respondens_by5$`2`), getSdPreferences(respondens_by5$`3`),
-                 getSdPreferences(respondens_by5$`4`))
+                 getSdPreferences(respondens_by5$`4`), getSdPreferences(respondens_by5$`5`))
 sizes5 <- c(nrow(respondens_by5$`1`), nrow(respondens_by5$`2`), nrow(respondens_by5$`3`), nrow(respondens_by5$`4`), 
             nrow(respondens_by5$`5`))
 
@@ -353,53 +754,6 @@ prop.test(ideology_by5[,3], sizes5)$p.value
 prop.test(ideology_by5[,4], sizes5)$p.value
 prop.test(ideology_by5[,5], sizes5)$p.value
 
-
-# przygotowuję wykresy z info o preferencjach respondentów
-goalsLabels <- c("Walka z dyskryminacją kobiet",
-"Walka z dyskryminacją osób LGBT+",
-"Walka z dyskryminacją mniejszości etnicznych",
-"Walka z dyskryminacją mniejszości religijnych",
-"Redukowanie ilości produkowanych odpadów, recykling",
-"Wspieranie ochrony praw zwierząt",
-"Zapewniania stabilnego zatrudnienia dla pracowników",
-"Zapewniania wysokiego minimalnego wynagrodzenia dla pracowników",
-"Ochrona dziedzictwa kulturowego",
-"Zapewnienie finansowanie sztuki i kultury",
-"Walka z biedą w Polsce",
-"Finansowanie akcji społecznych i humanitarnych w biednych regionach świata",
-"Rozwój edukacji w Polsce",
-"Wspieranie ochrony zdrowia w Polsce",
-"Walka z globalną katastrofą klimatyczną",
-"Walka z łamaniem praw pracowniczych")
-
-# przygotowuję wykresy z info o preferencjach respondentów - całość
-goalsNumbers <- c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16")
-data <- data.frame(Labels=goalsNumbers)
-data$sd <- prefSD1$`getSdPreferences(respondents)`
-data$mean <- pref1$`getMeanPreferences(respondents)` 
-ggplot(data,aes(x=reorder(Labels, -mean), y=mean)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle =0), text = element_text(size=chart_font_size)) 
-ggsave("charts_preferences/whole_mean.png", width = 15, height = 7)
-
-ggplot(data,aes(x=reorder(Labels, -mean), y=sd)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle =0), text = element_text(size=chart_font_size)) 
-ggsave("charts_preferences/whole_sd.png", width = 15, height = 7)
-
-```
-
-```{r}
-
-# ostatecznie z tego zrezygnowałem - najmniejsza grupa liczy 12 osób, 
-# ciężko w takiej sytuacji mówić o istotnych statystycznie wynikach
-
-# dzielę na 8 grup i zapisuję grupy
-groups8 <- cutree(fit, k=8)
-pdf(file="g8.pdf")
-plot(as.phylo(fit), type = "fan", tip.color = colors[groups8],
-     label.offset = 1, cex = 0.7)
-dev.off()
-
-respondents["group8"] <- groups8
-
-
 # dzielę respondentów według grup - na 8, zapisuję ich uśrednione preferencje
 respondens_by8 <- split(respondents, respondents$group8)
 table(respondents$group8)
@@ -421,8 +775,59 @@ prop.table(table(respondens_by8$`8`$q20))
 
 
 
-```
+# przygotowuję wykresy z info o preferencjach respondentów - podział na 4
+data$sd <- t(as.table(prefSD4))[,1]
+data$mean <-  t(as.table(pref4))[,1]
+ggplot(data,aes(x=reorder(Labels, -mean), y=mean)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle =0), text = element_text(size=chart_font_size)) 
+ggsave("charts_preferences/subgroup1_4_mean.png", width = 15, height = 7)
 
+ggplot(data,aes(x=reorder(Labels, -mean), y=sd)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle =0), text = element_text(size=chart_font_size)) 
+ggsave("charts_preferences/subgroup1_4_sd.png", width = 15, height = 7)
+
+data$sd <- t(as.table(prefSD4))[,3]
+data$mean <-  t(as.table(pref4))[,3]
+ggplot(data,aes(x=reorder(Labels, -mean), y=mean)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle =0), text = element_text(size=chart_font_size)) 
+ggsave("charts_preferences/subgroup3_4_mean.png", width = 15, height = 7)
+
+ggplot(data,aes(x=reorder(Labels, -mean), y=sd)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle =0), text = element_text(size=chart_font_size)) 
+ggsave("charts_preferences/subgroup3_4_sd.png", width = 15, height = 7)
+
+# przygotowuję wykresy z info o preferencjach respondentów - podział na 5
+data$sd <- t(as.table(prefSD5))[,2]
+data$mean <-  t(as.table(pref5))[,2]
+ggplot(data,aes(x=reorder(Labels, -mean), y=mean)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle =0), text = element_text(size=chart_font_size)) 
+ggsave("charts_preferences/subgroup2_5_mean.png", width = 15, height = 7)
+
+ggplot(data,aes(x=reorder(Labels, -mean), y=sd)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle =0), text = element_text(size=chart_font_size)) 
+ggsave("charts_preferences/subgroup2_5_sd.png", width = 15, height = 7)
+
+data$sd <- t(as.table(prefSD5))[,3]
+data$mean <-  t(as.table(pref5))[,3]
+ggplot(data,aes(x=reorder(Labels, -mean), y=mean)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle =0), text = element_text(size=chart_font_size)) 
+ggsave("charts_preferences/subgroup3_5_mean.png", width = 15, height = 7)
+
+ggplot(data,aes(x=reorder(Labels, -mean), y=sd)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle =0), text = element_text(size=chart_font_size)) 
+ggsave("charts_preferences/subgroup3_5_sd.png", width = 15, height = 7)
+
+
+dunn.test(respondents$`1`, respondents$group4, method="bonferroni")
+dunn.test(respondents$`2`, respondents$group4, method="bonferroni")
+dunn.test(respondents$`3`, respondents$group4, method="bonferroni")
+dunn.test(respondents$`4`, respondents$group4, method="bonferroni")
+dunn.test(respondents$`5`, respondents$group4, method="bonferroni")
+dunn.test(respondents$`6`, respondents$group4, method="bonferroni")
+dunn.test(respondents$`7`, respondents$group4, method="bonferroni")
+dunn.test(respondents$`8`, respondents$group4, method="bonferroni")
+dunn.test(respondents$`9`, respondents$group4, method="bonferroni")
+dunn.test(respondents$`10`, respondents$group4, method="bonferroni")
+dunn.test(respondents$`11`, respondents$group4, method="bonferroni")
+dunn.test(respondents$`12`, respondents$group4, method="bonferroni")
+dunn.test(respondents$`13`, respondents$group4, method="bonferroni")
+dunn.test(respondents$`14`, respondents$group4, method="bonferroni")
+dunn.test(respondents$`15`, respondents$group4, method="bonferroni")
+dunn.test(respondents$`16`, respondents$group4, method="bonferroni")
+
+```
 
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
 
