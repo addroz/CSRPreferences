@@ -422,20 +422,36 @@ dunn.test(respondents$`16`, respondents$group3, method="bonferroni")
 8. Przygotowanie wykresów z informacjami o preferencjach
 ```{r}
 # przygotowuję wykresy z info o preferencjach respondentów - całość
-goalsNumbers <- c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16")
+goalsNumbers <- c("Stop dyskryminacji kobiet",
+ "Stop dyskryminacji osób LGBT+",
+ "Stop dyskryminacji mniej. etnicznych",
+ "Stop dyskryminacji mniej. religijnych",
+ "Redukowanie ilości odpadów",
+ "Ochrona praw zwierząt",
+ "Stabilne zatrudnienie",
+ "Wysokie minimalne wynagrodzenia",
+ "Dziedzictwo kulturowe",
+ "Finansowanie sztuki",
+ "Walka z biedą w Polsce",
+ "Walka z biedą na świecie",
+ "Edukacja w Polsce",
+ "Ochrona zdrowia w Polsce",
+ "Walka z katastrofą klimatyczną",
+ "Prawa pracownicze")
 data <- data.frame(Labels=goalsNumbers)
 data$sd <- prefSD1$`getSdPreferences(respondents)`
-data$mean <- pref1$`getMeanPreferences(respondents)` 
-ggplot(data,aes(x=reorder(Labels, -mean), y=mean)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle =0), text = element_text(size=chart_font_size)) 
+data$mean <- pref1$`getMeanPreferences(respondents)`
+data
+ggplot(data,aes(x=reorder(Labels, mean), y=mean)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle =0), text = element_text(size=chart_font_size-10)) + coord_flip()
 ggsave("charts_preferences/whole_mean.png", width = 15, height = 7)
 
-ggplot(data,aes(x=reorder(Labels, -mean), y=sd)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle =0), text = element_text(size=chart_font_size)) 
+ggplot(data,aes(x=reorder(Labels, -mean), y=sd)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle =0), text = element_text(size=chart_font_size))
 ggsave("charts_preferences/whole_sd.png", width = 15, height = 7)
 
 # przygotowuję wykresy z info o preferencjach respondentów - podział na 2
 data$sd <- t(as.table(prefSD2))[,1]
 data$mean <-  t(as.table(pref2))[,1]
-ggplot(data,aes(x=reorder(Labels, -mean), y=mean)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle =0), text = element_text(size=chart_font_size)) 
+ggplot(data,aes(x=reorder(Labels, mean), y=mean)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle =0), text = element_text(size=chart_font_size-10))  + coord_flip()
 ggsave("charts_preferences/subgroup1_2_mean.png", width = 15, height = 7)
 
 ggplot(data,aes(x=reorder(Labels, -mean), y=sd)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle =0), text = element_text(size=chart_font_size)) 
@@ -443,7 +459,7 @@ ggsave("charts_preferences/subgroup1_2_sd.png", width = 15, height = 7)
 
 data$sd <- t(as.table(prefSD2))[,2]
 data$mean <-  t(as.table(pref2))[,2]
-ggplot(data,aes(x=reorder(Labels, -mean), y=mean)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle =0), text = element_text(size=chart_font_size)) 
+ggplot(data,aes(x=reorder(Labels, mean), y=mean)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle =0), text = element_text(size=chart_font_size-10))  + coord_flip()
 ggsave("charts_preferences/subgroup2_2_mean.png", width = 15, height = 7)
 
 ggplot(data,aes(x=reorder(Labels, -mean), y=sd)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle =0), text = element_text(size=chart_font_size)) 
@@ -452,7 +468,7 @@ ggsave("charts_preferences/subgroup2_2_sd.png", width = 15, height = 7)
 # przygotowuję wykresy z info o preferencjach respondentów - podział na 3
 data$sd <- t(as.table(prefSD3))[,2]
 data$mean <-  t(as.table(pref3))[,2]
-ggplot(data,aes(x=reorder(Labels, -mean), y=mean)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle =0), text = element_text(size=chart_font_size)) 
+ggplot(data,aes(x=reorder(Labels, mean), y=mean)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle =0), text = element_text(size=chart_font_size-10))  + coord_flip()
 ggsave("charts_preferences/subgroup2_3_mean.png", width = 15, height = 7)
 
 ggplot(data,aes(x=reorder(Labels, -mean), y=sd)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle =0), text = element_text(size=chart_font_size)) 
@@ -460,7 +476,7 @@ ggsave("charts_preferences/subgroup2_3_sd.png", width = 15, height = 7)
 
 data$sd <- t(as.table(prefSD3))[,3]
 data$mean <-  t(as.table(pref3))[,3]
-ggplot(data,aes(x=reorder(Labels, -mean), y=mean)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle =0), text = element_text(size=chart_font_size)) 
+ggplot(data,aes(x=reorder(Labels, mean), y=mean)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle =0), text = element_text(size=chart_font_size-10))  + coord_flip()
 ggsave("charts_preferences/subgroup3_3_mean.png", width = 15, height = 7)
 
 ggplot(data,aes(x=reorder(Labels, -mean), y=sd)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle =0), text = element_text(size=chart_font_size)) 
@@ -522,22 +538,37 @@ pref_byLeftRight <- rbind(getMeanPreferences(respondens_byLeftRight$`1`),
 
 11. Alternatywne podejście - podział na prawicę i lewicę - przygotowuję wykresy
 ```{r}
-goalsNumbers <- c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16")
+goalsNumbers <- c("Stop dyskryminacji kobiet",
+ "Stop dyskryminacji osób LGBT+",
+ "Stop dyskryminacji mniej. etnicznych",
+ "Stop dyskryminacji mniej. religijnych",
+ "Redukowanie ilości odpadów",
+ "Ochrona praw zwierząt",
+ "Stabilne zatrudnienie",
+ "Wysokie minimalne wynagrodzenia",
+ "Dziedzictwo kulturowe",
+ "Finansowanie sztuki",
+ "Walka z biedą w Polsce",
+ "Walka z biedą na świecie",
+ "Edukacja w Polsce",
+ "Ochrona zdrowia w Polsce",
+ "Walka z katastrofą klimatyczną",
+ "Prawa pracownicze")
 data <- data.frame(Labels=goalsNumbers)
 data$mean <- t(as.table(pref_byLeftRight))[,1]
-ggplot(data,aes(x=reorder(Labels, -mean), y=mean)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle =0), text = element_text(size=chart_font_size)) 
+ggplot(data,aes(x=reorder(Labels, mean), y=mean)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle =0), text = element_text(size=chart_font_size-10)) + coord_flip()
 ggsave("charts_preferences/left_leftRight_mean.png", width = 15, height = 7)
 
 data$mean <- t(as.table(pref_byLeftRight))[,2]
-ggplot(data,aes(x=reorder(Labels, -mean), y=mean)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle =0), text = element_text(size=chart_font_size)) 
+ggplot(data,aes(x=reorder(Labels, mean), y=mean)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle =0), text = element_text(size=chart_font_size-10)) + coord_flip()
 ggsave("charts_preferences/center_leftRight_mean.png", width = 15, height = 7)
 
 data$mean <- t(as.table(pref_byLeftRight))[,3]
-ggplot(data,aes(x=reorder(Labels, -mean), y=mean)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle =0), text = element_text(size=chart_font_size)) 
+ggplot(data,aes(x=reorder(Labels, mean), y=mean)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle =0), text = element_text(size=chart_font_size-10)) + coord_flip()
 ggsave("charts_preferences/right_leftRight_mean.png", width = 15, height = 7)
 
 data$mean <- t(as.table(pref_byLeftRight))[,4]
-ggplot(data,aes(x=reorder(Labels, -mean), y=mean)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle =0), text = element_text(size=chart_font_size)) 
+ggplot(data,aes(x=reorder(Labels, mean), y=mean)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle =0), text = element_text(size=chart_font_size-10)) + coord_flip()
 ggsave("charts_preferences/no_leftRight_mean.png", width = 15, height = 7)
 ```
 
@@ -606,10 +637,25 @@ kendall <- as.data.frame(kendall)
 
 14. Genereuję wykres współczynnika korelacji 
 ```{r}
-goalsNumbers <- c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16")
+goalsNumbers <- c("Stop dyskryminacji kobiet",
+ "Stop dyskryminacji osób LGBT+",
+ "Stop dyskryminacji mniej. etnicznych",
+ "Stop dyskryminacji mniej. religijnych",
+ "Redukowanie ilości odpadów",
+ "Ochrona praw zwierząt",
+ "Stabilne zatrudnienie",
+ "Wysokie minimalne wynagrodzenia",
+ "Dziedzictwo kulturowe",
+ "Finansowanie sztuki",
+ "Walka z biedą w Polsce",
+ "Walka z biedą na świecie",
+ "Edukacja w Polsce",
+ "Ochrona zdrowia w Polsce",
+ "Walka z katastrofą klimatyczną",
+ "Prawa pracownicze")
 data <- data.frame(Labels=goalsNumbers)
 data$value <- as.vector(kendall$kendall)
-ggplot(data,aes(x=reorder(Labels, -value), y=value)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle =0), text = element_text(size=chart_font_size)) 
+ggplot(data,aes(x=reorder(Labels, value), y=value)) + geom_bar(stat="identity") + theme_minimal() +  theme(axis.title.x=element_blank(), axis.title.y=element_blank(), axis.text.x = element_text(angle =0), text = element_text(size=chart_font_size-10)) + coord_flip()
 ggsave("charts_preferences/kendall.png", width = 15, height = 7)
 ```
 
